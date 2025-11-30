@@ -3,6 +3,7 @@ import { useDashboardNotification } from "@saleor/apps-shared/use-dashboard-noti
 import { Box, Text } from "@saleor/macaw-ui";
 import { NextPage } from "next";
 import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 
 import { BasicLayout } from "../../../components/basic-layout";
 import { appUrls } from "../../../modules/app-configuration/urls";
@@ -50,18 +51,27 @@ const EditSmtpConfigurationPage: NextPage = () => {
   const { appBridgeState } = useAppBridge();
   const { notifyError } = useDashboardNotification();
   const router = useRouter();
+  const [isAppBridgeReady, setIsAppBridgeReady] = useState(false);
   const configurationId = router.query.configurationId
     ? (router.query.configurationId as string)
     : undefined;
+
+  // 使用 useEffect 等待 AppBridge 完全初始化
+  useEffect(() => {
+    if (appBridgeState?.ready) {
+      setIsAppBridgeReady(true);
+    }
+  }, [appBridgeState?.ready]);
+
   const { data: configuration, isLoading } = trpcClient.smtpConfiguration.getConfiguration.useQuery(
     {
       id: configurationId!,
     },
     {
-      enabled: !!configurationId && !!appBridgeState?.ready,
+      enabled: !!configurationId && isAppBridgeReady,
       onSettled(data, error) {
         // 只有在 AppBridge 准备好后才显示通知
-        if (!appBridgeState?.ready) {
+        if (!isAppBridgeReady) {
           return;
         }
 
@@ -77,7 +87,7 @@ const EditSmtpConfigurationPage: NextPage = () => {
   );
 
   // 只有在 AppBridge 完全准备好后才渲染内容
-  if (!appBridgeState?.ready) {
+  if (!isAppBridgeReady) {
     return <LoadingView />;
   }
 
