@@ -111,12 +111,17 @@ const EditSmtpConfigurationPage: NextPage = () => {
           <Text>Connect SMTP with Saleor.</Text>
         </Box>
       </Box>
-      <SmtpBasicInformationSection configuration={configuration} />
-      <SmtpSection configuration={configuration} />
-      <SmtpSenderSection configuration={configuration} />
-      <SmtpEventsSection configuration={configuration} />
-      <SmtpChannelsSection configuration={configuration} />
-      <SmtpDangerousSection configuration={configuration} />
+      {/* 只有在 AppBridge 准备好后才渲染子组件，避免 useAppBridge 错误 */}
+      {isAppBridgeReady && (
+        <>
+          <SmtpBasicInformationSection configuration={configuration} />
+          <SmtpSection configuration={configuration} />
+          <SmtpSenderSection configuration={configuration} />
+          <SmtpEventsSection configuration={configuration} />
+          <SmtpChannelsSection configuration={configuration} />
+          <SmtpDangerousSection configuration={configuration} />
+        </>
+      )}
     </BasicLayout>
   );
 };

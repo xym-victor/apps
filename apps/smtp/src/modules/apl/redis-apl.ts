@@ -3,8 +3,6 @@ import { createClient, RedisClientType } from "redis";
 
 import { createLogger } from "../../logger";
 
-const logger = createLogger("RedisAPL");
-
 /**
  * Custom Redis APL implementation for self-hosted Redis
  *
@@ -17,46 +15,69 @@ const logger = createLogger("RedisAPL");
  * - REDIS_KEY_PREFIX: Key prefix for APL keys (default: "saleor-apl:")
  */
 export class RedisAPL implements APL {
-  private client: RedisClientType;
+  private client: RedisClientType | null = null;
   private keyPrefix: string;
   private connectionPromise: Promise<void> | null = null;
   private isConnecting = false;
+  private logger: ReturnType<typeof createLogger> | null = null;
 
   constructor() {
-    const redisUrl = process.env.REDIS_URL;
-    const redisHost = process.env.REDIS_HOST || "localhost";
-    const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
-    const redisPassword = process.env.REDIS_PASSWORD;
-    const redisDb = parseInt(process.env.REDIS_DB || "0", 10);
-
+    // Only initialize keyPrefix in constructor, delay client and logger creation
     this.keyPrefix = process.env.REDIS_KEY_PREFIX || "saleor-apl:";
+  }
 
-    if (redisUrl) {
-      this.client = createClient({
-        url: redisUrl,
+  /**
+   * Lazy initialization of logger - only create when first needed
+   */
+  private getLogger() {
+    if (!this.logger) {
+      this.logger = createLogger("RedisAPL");
+    }
+
+    return this.logger;
+  }
+
+  /**
+   * Lazy initialization of Redis client - only create when first needed
+   */
+  private getClient(): RedisClientType {
+    if (!this.client) {
+      const redisUrl = process.env.REDIS_URL;
+      const redisHost = process.env.REDIS_HOST || "localhost";
+      const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
+      const redisPassword = process.env.REDIS_PASSWORD;
+      const redisDb = parseInt(process.env.REDIS_DB || "0", 10);
+
+      if (redisUrl) {
+        this.client = createClient({
+          url: redisUrl,
+        });
+      } else {
+        this.client = createClient({
+          socket: {
+            host: redisHost,
+            port: redisPort,
+          },
+          password: redisPassword,
+          database: redisDb,
+        });
+      }
+
+      // Register event listeners after client creation
+      this.client.on("error", (err) => {
+        this.getLogger().error({ error: err }, "Redis client error");
       });
-    } else {
-      this.client = createClient({
-        socket: {
-          host: redisHost,
-          port: redisPort,
-        },
-        password: redisPassword,
-        database: redisDb,
+
+      this.client.on("connect", () => {
+        this.getLogger().info("Redis client connected");
+      });
+
+      this.client.on("ready", () => {
+        this.getLogger().info("Redis client ready");
       });
     }
 
-    this.client.on("error", (err) => {
-      logger.error({ error: err }, "Redis client error");
-    });
-
-    this.client.on("connect", () => {
-      logger.info("Redis client connected");
-    });
-
-    this.client.on("ready", () => {
-      logger.info("Redis client ready");
-    });
+    return this.client;
   }
 
   /**
@@ -64,8 +85,10 @@ export class RedisAPL implements APL {
    * Uses lazy connection pattern - connects on first use
    */
   private async ensureConnected(): Promise<void> {
+    const client = this.getClient();
+
     // If already connected, return immediately
-    if (this.client.isOpen) {
+    if (client.isOpen) {
       return;
     }
 
@@ -76,16 +99,16 @@ export class RedisAPL implements APL {
 
     // Start new connection
     this.isConnecting = true;
-    this.connectionPromise = this.client
+    this.connectionPromise = client
       .connect()
       .then(() => {
-        logger.info("Redis connection established");
+        this.getLogger().info("Redis connection established");
         this.isConnecting = false;
       })
       .catch((err) => {
         this.isConnecting = false;
         this.connectionPromise = null;
-        logger.error({ error: err }, "Failed to connect to Redis");
+        this.getLogger().error({ error: err }, "Failed to connect to Redis");
         throw new Error(`Failed to connect to Redis: ${err.message}`);
       });
 
@@ -100,7 +123,8 @@ export class RedisAPL implements APL {
     try {
       await this.ensureConnected();
       const key = this.getKey(saleorApiUrl);
-      const data = await this.client.get(key);
+      const client = this.getClient();
+      const data = await client.get(key);
 
       if (!data) {
         return undefined;
@@ -110,7 +134,7 @@ export class RedisAPL implements APL {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      logger.error(
+      this.getLogger().error(
         {
           errorMessage,
           saleorApiUrl,
@@ -127,12 +151,13 @@ export class RedisAPL implements APL {
       await this.ensureConnected();
       const key = this.getKey(authData.saleorApiUrl);
       const data = JSON.stringify(authData);
+      const client = this.getClient();
 
-      await this.client.set(key, data);
+      await client.set(key, data);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      logger.error(
+      this.getLogger().error(
         {
           errorMessage,
           saleorApiUrl: authData.saleorApiUrl,
@@ -148,12 +173,13 @@ export class RedisAPL implements APL {
     try {
       await this.ensureConnected();
       const key = this.getKey(saleorApiUrl);
+      const client = this.getClient();
 
-      await this.client.del(key);
+      await client.del(key);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      logger.error(
+      this.getLogger().error(
         {
           errorMessage,
           saleorApiUrl,
@@ -169,13 +195,14 @@ export class RedisAPL implements APL {
     try {
       await this.ensureConnected();
       const pattern = `${this.keyPrefix}*`;
-      const keys = await this.client.keys(pattern);
+      const client = this.getClient();
+      const keys = await client.keys(pattern);
 
       if (keys.length === 0) {
         return [];
       }
 
-      const values = await this.client.mGet(keys);
+      const values = await client.mGet(keys);
       const authDataList: AuthData[] = [];
 
       for (const value of values) {
@@ -183,7 +210,7 @@ export class RedisAPL implements APL {
           try {
             authDataList.push(JSON.parse(value) as AuthData);
           } catch (parseError) {
-            logger.warn({ error: parseError }, "Failed to parse auth data from Redis");
+            this.getLogger().warn({ error: parseError }, "Failed to parse auth data from Redis");
           }
         }
       }
@@ -192,7 +219,7 @@ export class RedisAPL implements APL {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      logger.error(
+      this.getLogger().error(
         {
           errorMessage,
         },
