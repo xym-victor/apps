@@ -7,7 +7,7 @@ const logger = createLogger("RedisAPL");
 
 /**
  * Custom Redis APL implementation for self-hosted Redis
- * 
+ *
  * Environment variables required:
  * - REDIS_URL: Redis connection URL (e.g., redis://localhost:6379 or redis://:password@host:port)
  * - REDIS_HOST: Redis host (default: localhost)
@@ -28,6 +28,7 @@ export class RedisAPL implements APL {
     const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
     const redisPassword = process.env.REDIS_PASSWORD;
     const redisDb = parseInt(process.env.REDIS_DB || "0", 10);
+
     this.keyPrefix = process.env.REDIS_KEY_PREFIX || "saleor-apl:";
 
     if (redisUrl) {
@@ -107,7 +108,16 @@ export class RedisAPL implements APL {
 
       return JSON.parse(data) as AuthData;
     } catch (error) {
-      logger.error({ error, saleorApiUrl }, "Error getting auth data from Redis");
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      logger.error(
+        {
+          errorMessage,
+          saleorApiUrl,
+        },
+        "Error getting auth data from Redis",
+      );
+
       throw error;
     }
   }
@@ -120,7 +130,16 @@ export class RedisAPL implements APL {
 
       await this.client.set(key, data);
     } catch (error) {
-      logger.error({ error, saleorApiUrl: authData.saleorApiUrl }, "Error setting auth data in Redis");
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      logger.error(
+        {
+          errorMessage,
+          saleorApiUrl: authData.saleorApiUrl,
+        },
+        "Error setting auth data in Redis",
+      );
+
       throw error;
     }
   }
@@ -129,9 +148,19 @@ export class RedisAPL implements APL {
     try {
       await this.ensureConnected();
       const key = this.getKey(saleorApiUrl);
+
       await this.client.del(key);
     } catch (error) {
-      logger.error({ error, saleorApiUrl }, "Error deleting auth data from Redis");
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      logger.error(
+        {
+          errorMessage,
+          saleorApiUrl,
+        },
+        "Error deleting auth data from Redis",
+      );
+
       throw error;
     }
   }
@@ -161,50 +190,16 @@ export class RedisAPL implements APL {
 
       return authDataList;
     } catch (error) {
-      logger.error({ error }, "Error getting all auth data from Redis");
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      logger.error(
+        {
+          errorMessage,
+        },
+        "Error getting all auth data from Redis",
+      );
+
       throw error;
     }
   }
-
-  async isReady(): Promise<boolean> {
-    try {
-      await this.ensureConnected();
-      await this.client.ping();
-      return true;
-    } catch (error) {
-      logger.error({ error }, "Redis is not ready");
-      return false;
-    }
-  }
-
-  async isConfigured(saleorApiUrl: string): Promise<boolean> {
-    try {
-      await this.ensureConnected();
-      const key = this.getKey(saleorApiUrl);
-      const exists = await this.client.exists(key);
-      return exists === 1;
-    } catch (error) {
-      // If connection fails, this means APL is not properly configured
-      // Log the error but don't throw - let the caller handle it
-      // However, we should distinguish between "not configured for this URL" 
-      // vs "APL itself is not working"
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      // If it's a connection error, this indicates APL configuration issue
-      if (errorMessage.indexOf("Failed to connect") !== -1 || errorMessage.indexOf("ECONNREFUSED") !== -1) {
-        logger.error(
-          { error, saleorApiUrl },
-          "Redis APL connection failed - APL is not properly configured. Check Redis connection settings.",
-        );
-        // Return false to indicate APL is not configured
-        // The app-sdk will interpret this as APL_NOT_CONFIGURED
-        return false;
-      }
-      
-      // For other errors (like key not found), return false (normal case for new installations)
-      logger.debug({ error, saleorApiUrl }, "Auth data not found in Redis (this is normal for new installations)");
-      return false;
-    }
-  }
 }
-

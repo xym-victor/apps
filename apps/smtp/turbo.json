@@ -2,6 +2,17 @@
   "$schema": "https://turbo.build/schema.v2.json",
   "extends": ["//"],
   "tasks": {
+    "build": {
+      "env": [
+        "APL",
+        "REDIS_URL",
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "REDIS_PASSWORD",
+        "REDIS_DB",
+        "REDIS_KEY_PREFIX"
+      ]
+    },
     "deploy": {
       "env": [
         "ALLOWED_DOMAIN_PATTERN",
@@ -17,7 +28,13 @@
         "AWS_ACCESS_KEY_ID",
         "AWS_REGION",
         "AWS_SECRET_ACCESS_KEY",
-        "DYNAMODB_MAIN_TABLE_NAME"
+        "DYNAMODB_MAIN_TABLE_NAME",
+        "REDIS_URL",
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "REDIS_PASSWORD",
+        "REDIS_DB",
+        "REDIS_KEY_PREFIX"
       ]
     }
   }
