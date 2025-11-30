@@ -58,8 +58,13 @@ const EditSmtpConfigurationPage: NextPage = () => {
       id: configurationId!,
     },
     {
-      enabled: !!configurationId && !!appBridgeState,
+      enabled: !!configurationId && !!appBridgeState?.ready,
       onSettled(data, error) {
+        // 只有在 AppBridge 准备好后才显示通知
+        if (!appBridgeState?.ready) {
+          return;
+        }
+
         if (error) {
           notifyError("Could not fetch configuration data");
         }
@@ -71,8 +76,9 @@ const EditSmtpConfigurationPage: NextPage = () => {
     },
   );
 
-  if (!appBridgeState) {
-    return null;
+  // 只有在 AppBridge 完全准备好后才渲染内容
+  if (!appBridgeState?.ready) {
+    return <LoadingView />;
   }
 
   if (isLoading) {
