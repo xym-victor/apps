@@ -1,0 +1,13 @@
+{
+  "extends": "@saleor/typescript-config-apps/base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/generated/*": ["generated/*"],
+      "@/package.json": ["package.json"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "next.config.ts", "graphql.config.ts"],
+  "exclude": ["node_modules"]
+}

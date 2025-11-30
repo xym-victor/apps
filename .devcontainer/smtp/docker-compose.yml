@@ -1,0 +1,26 @@
+name: saleor-app-smtp_devcontainer
+services:
+  smtp:
+    image: smtp
+    command: sleep infinity # keeps docker container running
+    build:
+      context: ../..
+      dockerfile: .devcontainer/smtp/Dockerfile
+    volumes:
+      - "../..:/app"
+      - "pnpm-store:/app/.pnpm-store"
+    depends_on:
+      - mailpit
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+volumes:
+  pnpm-store:
+    driver: local
