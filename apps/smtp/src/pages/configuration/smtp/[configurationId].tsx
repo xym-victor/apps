@@ -1,3 +1,4 @@
+import { useAppBridge } from "@saleor/app-sdk/app-bridge";
 import { useDashboardNotification } from "@saleor/apps-shared/use-dashboard-notification";
 import { Box, Text } from "@saleor/macaw-ui";
 import { NextPage } from "next";
@@ -46,6 +47,7 @@ const NotFoundView = () => {
 };
 
 const EditSmtpConfigurationPage: NextPage = () => {
+  const { appBridgeState } = useAppBridge();
   const { notifyError } = useDashboardNotification();
   const router = useRouter();
   const configurationId = router.query.configurationId
@@ -56,7 +58,7 @@ const EditSmtpConfigurationPage: NextPage = () => {
       id: configurationId!,
     },
     {
-      enabled: !!configurationId,
+      enabled: !!configurationId && !!appBridgeState,
       onSettled(data, error) {
         if (error) {
           notifyError("Could not fetch configuration data");
@@ -68,6 +70,10 @@ const EditSmtpConfigurationPage: NextPage = () => {
       },
     },
   );
+
+  if (!appBridgeState) {
+    return null;
+  }
 
   if (isLoading) {
     return <LoadingView />;

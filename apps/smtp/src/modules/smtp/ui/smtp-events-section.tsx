@@ -33,10 +33,13 @@ export const SmtpEventsSection = ({ configuration }: SmtpEventsSectionProps) => 
   const { data: featureFlags } = trpcClient.app.featureFlags.useQuery();
   const { data: appPermissions } = trpcClient.app.appPermissions.useQuery();
 
-  // Sort events by displayed label
-  const eventsSorted = configuration.events.sort((a, b) =>
-    messageEventTypesLabels[a.eventType].localeCompare(messageEventTypesLabels[b.eventType]),
-  );
+  // Sort events by displayed label (create a new array to avoid mutating the original)
+  const eventsSorted = [...(configuration.events || [])].sort((a, b) => {
+    const labelA = messageEventTypesLabels[a.eventType] || a.eventType;
+    const labelB = messageEventTypesLabels[b.eventType] || b.eventType;
+
+    return labelA.localeCompare(labelB);
+  });
 
   const { register, handleSubmit, setError } = useForm<SmtpUpdateEventArray>({
     defaultValues: {
