@@ -33,7 +33,7 @@ yarn-error.log*
 .turbo
 
 # env files
-.env
+# .env
 .env.test
 .env.local
 .env.development.local

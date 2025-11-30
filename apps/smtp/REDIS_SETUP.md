@@ -120,17 +120,65 @@ pnpm dev
 
 ## 故障排除
 
+### APL_NOT_CONFIGURED 错误
+
+如果遇到 "APL_NOT_CONFIGURED" 错误，请检查以下几点：
+
+1. **环境变量是否正确设置**
+   ```bash
+   # 检查环境变量
+   echo $APL
+   echo $REDIS_URL
+   # 或
+   echo $REDIS_HOST
+   ```
+
+2. **Redis 服务器是否运行**
+   ```bash
+   # 测试 Redis 连接
+   redis-cli ping
+   # 应该返回 PONG
+   ```
+
+3. **连接信息是否正确**
+   - 验证主机地址和端口
+   - 如果使用密码，确保密码正确
+   - 检查网络连接（防火墙、VPN等）
+
+4. **查看应用日志**
+   应用启动时会输出 Redis 连接日志，查找以下信息：
+   - "Redis client connected" - 连接成功
+   - "Redis client ready" - 客户端就绪
+   - "Failed to connect to Redis" - 连接失败
+
+5. **验证环境变量文件**
+   确保 `.env` 文件在项目根目录，且格式正确：
+   ```env
+   APL=redis
+   REDIS_URL=redis://localhost:6379
+   ```
+
 ### 连接失败
 
 - 检查 Redis 服务器是否正在运行
 - 验证 `REDIS_HOST` 和 `REDIS_PORT` 是否正确
 - 如果使用密码，确保 `REDIS_PASSWORD` 正确
 - 检查防火墙设置
+- 尝试使用 `redis-cli` 手动连接测试
 
 ### 认证失败
 
 - 验证 Redis 密码是否正确
 - 检查 Redis 配置文件中 `requirepass` 设置
+- 如果使用 URL 格式，确保密码在 URL 中正确编码
+
+### 常见错误信息
+
+| 错误信息 | 可能原因 | 解决方法 |
+|---------|---------|---------|
+| "Missing required environment variables" | 环境变量未设置 | 检查 `.env` 文件，确保设置了 `REDIS_URL` 或 `REDIS_HOST` |
+| "Failed to connect to Redis" | Redis 服务器未运行或连接信息错误 | 启动 Redis 服务器，检查连接信息 |
+| "APL_NOT_CONFIGURED" | APL 未正确初始化或连接失败 | 检查 Redis 连接和日志输出 |
 
 ## 与其他 APL 选项对比
 

@@ -19,6 +19,8 @@ const logger = createLogger("RedisAPL");
 export class RedisAPL implements APL {
   private client: RedisClientType;
   private keyPrefix: string;
+  private connectionPromise: Promise<void> | null = null;
+  private isConnecting = false;
 
   constructor() {
     const redisUrl = process.env.REDIS_URL;
@@ -51,11 +53,42 @@ export class RedisAPL implements APL {
       logger.info("Redis client connected");
     });
 
-    // Connect to Redis
-    this.client.connect().catch((err) => {
-      logger.error({ error: err }, "Failed to connect to Redis");
-      throw new Error(`Failed to connect to Redis: ${err.message}`);
+    this.client.on("ready", () => {
+      logger.info("Redis client ready");
     });
+  }
+
+  /**
+   * Ensure Redis connection is established
+   * Uses lazy connection pattern - connects on first use
+   */
+  private async ensureConnected(): Promise<void> {
+    // If already connected, return immediately
+    if (this.client.isOpen) {
+      return;
+    }
+
+    // If connection is in progress, wait for it
+    if (this.isConnecting && this.connectionPromise) {
+      return this.connectionPromise;
+    }
+
+    // Start new connection
+    this.isConnecting = true;
+    this.connectionPromise = this.client
+      .connect()
+      .then(() => {
+        logger.info("Redis connection established");
+        this.isConnecting = false;
+      })
+      .catch((err) => {
+        this.isConnecting = false;
+        this.connectionPromise = null;
+        logger.error({ error: err }, "Failed to connect to Redis");
+        throw new Error(`Failed to connect to Redis: ${err.message}`);
+      });
+
+    return this.connectionPromise;
   }
 
   private getKey(saleorApiUrl: string): string {
@@ -64,6 +97,7 @@ export class RedisAPL implements APL {
 
   async get(saleorApiUrl: string): Promise<AuthData | undefined> {
     try {
+      await this.ensureConnected();
       const key = this.getKey(saleorApiUrl);
       const data = await this.client.get(key);
 
@@ -80,6 +114,7 @@ export class RedisAPL implements APL {
 
   async set(authData: AuthData): Promise<void> {
     try {
+      await this.ensureConnected();
       const key = this.getKey(authData.saleorApiUrl);
       const data = JSON.stringify(authData);
 
@@ -92,6 +127,7 @@ export class RedisAPL implements APL {
 
   async delete(saleorApiUrl: string): Promise<void> {
     try {
+      await this.ensureConnected();
       const key = this.getKey(saleorApiUrl);
       await this.client.del(key);
     } catch (error) {
@@ -102,6 +138,7 @@ export class RedisAPL implements APL {
 
   async getAll(): Promise<AuthData[]> {
     try {
+      await this.ensureConnected();
       const pattern = `${this.keyPrefix}*`;
       const keys = await this.client.keys(pattern);
 
@@ -131,20 +168,41 @@ export class RedisAPL implements APL {
 
   async isReady(): Promise<boolean> {
     try {
+      await this.ensureConnected();
       await this.client.ping();
       return true;
-    } catch {
+    } catch (error) {
+      logger.error({ error }, "Redis is not ready");
       return false;
     }
   }
 
   async isConfigured(saleorApiUrl: string): Promise<boolean> {
     try {
+      await this.ensureConnected();
       const key = this.getKey(saleorApiUrl);
       const exists = await this.client.exists(key);
       return exists === 1;
     } catch (error) {
-      logger.error({ error, saleorApiUrl }, "Error checking if auth data is configured in Redis");
+      // If connection fails, this means APL is not properly configured
+      // Log the error but don't throw - let the caller handle it
+      // However, we should distinguish between "not configured for this URL" 
+      // vs "APL itself is not working"
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // If it's a connection error, this indicates APL configuration issue
+      if (errorMessage.indexOf("Failed to connect") !== -1 || errorMessage.indexOf("ECONNREFUSED") !== -1) {
+        logger.error(
+          { error, saleorApiUrl },
+          "Redis APL connection failed - APL is not properly configured. Check Redis connection settings.",
+        );
+        // Return false to indicate APL is not configured
+        // The app-sdk will interpret this as APL_NOT_CONFIGURED
+        return false;
+      }
+      
+      // For other errors (like key not found), return false (normal case for new installations)
+      logger.debug({ error, saleorApiUrl }, "Auth data not found in Redis (this is normal for new installations)");
       return false;
     }
   }
