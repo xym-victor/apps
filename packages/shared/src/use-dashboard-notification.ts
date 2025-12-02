@@ -2,57 +2,69 @@ import { actions, useAppBridge } from "@saleor/app-sdk/app-bridge";
 import { useCallback } from "react";
 
 export const useDashboardNotification = () => {
-  const { appBridge } = useAppBridge();
+  const { appBridge, appBridgeState } = useAppBridge();
 
   return {
     notifySuccess: useCallback(
       (title: string, text?: string) => {
-        appBridge?.dispatch(
-          actions.Notification({
-            status: "success",
-            title,
-            text,
-          }),
-        );
+        // Only dispatch notifications when AppBridge is ready
+        if (appBridgeState?.ready && appBridge) {
+          appBridge.dispatch(
+            actions.Notification({
+              status: "success",
+              title,
+              text,
+            }),
+          );
+        }
       },
-      [appBridge],
+      [appBridge, appBridgeState?.ready],
     ),
     notifyError: useCallback(
       (title: string, text?: string, apiMessage?: string) => {
-        appBridge?.dispatch(
-          actions.Notification({
-            status: "error",
-            title,
-            text,
-            apiMessage: apiMessage,
-          }),
-        );
+        // Only dispatch notifications when AppBridge is ready
+        if (appBridgeState?.ready && appBridge) {
+          appBridge.dispatch(
+            actions.Notification({
+              status: "error",
+              title,
+              text,
+              apiMessage: apiMessage,
+            }),
+          );
+        }
       },
-      [appBridge],
+      [appBridge, appBridgeState?.ready],
     ),
     notifyWarning: useCallback(
       (title: string, text?: string) => {
-        appBridge?.dispatch(
-          actions.Notification({
-            status: "warning",
-            title,
-            text,
-          }),
-        );
+        // Only dispatch notifications when AppBridge is ready
+        if (appBridgeState?.ready && appBridge) {
+          appBridge.dispatch(
+            actions.Notification({
+              status: "warning",
+              title,
+              text,
+            }),
+          );
+        }
       },
-      [appBridge],
+      [appBridge, appBridgeState?.ready],
     ),
     notifyInfo: useCallback(
       (title: string, text?: string) => {
-        appBridge?.dispatch(
-          actions.Notification({
-            status: "info",
-            title,
-            text,
-          }),
-        );
+        // Only dispatch notifications when AppBridge is ready
+        if (appBridgeState?.ready && appBridge) {
+          appBridge.dispatch(
+            actions.Notification({
+              status: "info",
+              title,
+              text,
+            }),
+          );
+        }
       },
-      [appBridge],
+      [appBridge, appBridgeState?.ready],
     ),
   };
 };
