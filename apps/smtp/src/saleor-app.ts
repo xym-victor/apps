@@ -1,11 +1,9 @@
 import { APL } from "@saleor/app-sdk/APL";
 import { DynamoAPL } from "@saleor/app-sdk/APL/dynamodb";
 import { FileAPL } from "@saleor/app-sdk/APL/file";
-import { RedisAPL } from "@saleor/app-sdk/APL/redis";
 import { SaleorCloudAPL } from "@saleor/app-sdk/APL/saleor-cloud";
 import { UpstashAPL } from "@saleor/app-sdk/APL/upstash";
 import { SaleorApp } from "@saleor/app-sdk/saleor-app";
-import { createClient } from "redis";
 
 import { dynamoMainTable } from "./modules/dynamodb/dynamo-main-table";
 
@@ -39,27 +37,49 @@ const validateRedisEnvVariables = () => {
   }
 };
 
-const createRedisClient = () => {
+// Lazy initialization of Redis APL to avoid blocking module loading
+// This prevents Redis client creation from affecting AppBridge initialization
+let redisAPLInstance: APL | undefined;
+
+const createRedisAPL = async (): Promise<APL> => {
+  if (redisAPLInstance) {
+    return redisAPLInstance;
+  }
+
+  // Dynamic import to avoid loading Redis module on client side
+  const { RedisAPL } = await import("@saleor/app-sdk/APL/redis");
+  const { createClient } = await import("redis");
+
   const redisUrl = process.env.REDIS_URL;
   const redisHost = process.env.REDIS_HOST || "localhost";
   const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
   const redisPassword = process.env.REDIS_PASSWORD;
   const redisDb = parseInt(process.env.REDIS_DB || "0", 10);
 
+  let redisClient;
   if (redisUrl) {
-    return createClient({
+    redisClient = createClient({
       url: redisUrl,
+    });
+  } else {
+    redisClient = createClient({
+      socket: {
+        host: redisHost,
+        port: redisPort,
+      },
+      password: redisPassword,
+      database: redisDb,
     });
   }
 
-  return createClient({
-    socket: {
-      host: redisHost,
-      port: redisPort,
-    },
-    password: redisPassword,
-    database: redisDb,
+  const hashCollectionKey = process.env.REDIS_HASH_COLLECTION_KEY || "saleor_app_auth";
+
+  redisAPLInstance = new RedisAPL({
+    client: redisClient,
+    hashCollectionKey,
   });
+
+  return redisAPLInstance;
 };
 
 switch (aplType) {
@@ -81,13 +101,28 @@ switch (aplType) {
   case "redis": {
     validateRedisEnvVariables();
 
-    const redisClient = createRedisClient();
-    const hashCollectionKey = process.env.REDIS_HASH_COLLECTION_KEY || "saleor_app_auth";
+    // Use a proxy APL that lazily initializes Redis APL on first use
+    // This prevents blocking module initialization and avoids client-side execution
+    const proxyAPL: APL = {
+      get: async (saleorApiUrl: string) => {
+        const redisAPL = await createRedisAPL();
+        return redisAPL.get(saleorApiUrl);
+      },
+      set: async (authData) => {
+        const redisAPL = await createRedisAPL();
+        return redisAPL.set(authData);
+      },
+      delete: async (saleorApiUrl: string) => {
+        const redisAPL = await createRedisAPL();
+        return redisAPL.delete(saleorApiUrl);
+      },
+      getAll: async () => {
+        const redisAPL = await createRedisAPL();
+        return redisAPL.getAll();
+      },
+    };
 
-    apl = new RedisAPL({
-      client: redisClient,
-      hashCollectionKey,
-    });
+    apl = proxyAPL;
 
     break;
   }
