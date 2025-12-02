@@ -37,8 +37,10 @@ const validateRedisEnvVariables = () => {
   }
 };
 
-// Lazy initialization of Redis APL to avoid blocking module loading
-// This prevents Redis client creation from affecting AppBridge initialization
+/**
+ * Lazy initialization of Redis APL to avoid blocking module loading
+ * This prevents Redis client creation from affecting AppBridge initialization
+ */
 let redisAPLInstance: APL | undefined;
 
 const createRedisAPL = async (): Promise<APL> => {
@@ -57,6 +59,7 @@ const createRedisAPL = async (): Promise<APL> => {
   const redisDb = parseInt(process.env.REDIS_DB || "0", 10);
 
   let redisClient;
+
   if (redisUrl) {
     redisClient = createClient({
       url: redisUrl,
@@ -101,23 +104,29 @@ switch (aplType) {
   case "redis": {
     validateRedisEnvVariables();
 
-    // Use a proxy APL that lazily initializes Redis APL on first use
-    // This prevents blocking module initialization and avoids client-side execution
+    /**
+     * Use a proxy APL that lazily initializes Redis APL on first use
+     * This prevents blocking module initialization and avoids client-side execution
+     */
     const proxyAPL: APL = {
       get: async (saleorApiUrl: string) => {
         const redisAPL = await createRedisAPL();
+
         return redisAPL.get(saleorApiUrl);
       },
       set: async (authData) => {
         const redisAPL = await createRedisAPL();
+
         return redisAPL.set(authData);
       },
       delete: async (saleorApiUrl: string) => {
         const redisAPL = await createRedisAPL();
+
         return redisAPL.delete(saleorApiUrl);
       },
       getAll: async () => {
         const redisAPL = await createRedisAPL();
+
         return redisAPL.getAll();
       },
     };
