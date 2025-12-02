@@ -7,13 +7,13 @@ import { useEffect, useState } from "react";
 
 import { BasicLayout } from "../../../components/basic-layout";
 import { appUrls } from "../../../modules/app-configuration/urls";
+import { SmtpConfiguration } from "../../../modules/smtp/configuration/smtp-config-schema";
 import { SmtpBasicInformationSection } from "../../../modules/smtp/ui/smtp-basic-information-section";
 import { SmtpChannelsSection } from "../../../modules/smtp/ui/smtp-channels-section";
 import { SmtpDangerousSection } from "../../../modules/smtp/ui/smtp-dangerous-section";
 import { SmtpEventsSection } from "../../../modules/smtp/ui/smtp-events-section";
 import { SmtpSection } from "../../../modules/smtp/ui/smtp-section";
 import { SmtpSenderSection } from "../../../modules/smtp/ui/smtp-sender-section";
-import { SmtpConfiguration } from "../../../modules/smtp/configuration/smtp-config-schema";
 import { trpcClient } from "../../../modules/trpc/trpc-client";
 
 const LoadingView = () => {
@@ -94,18 +94,17 @@ const EditSmtpConfigurationPage: NextPage = () => {
 };
 
 // 分离内容组件，确保 AppBridge 准备好后才调用相关 hooks
+type GetConfigurationQueryResult = ReturnType<
+  typeof trpcClient.smtpConfiguration.getConfiguration.useQuery
+>;
+type GetConfigurationError = GetConfigurationQueryResult extends { error: infer E } ? E : never;
+
 const EditSmtpConfigurationContent = ({
   configuration,
   error: queryError,
 }: {
   configuration: SmtpConfiguration;
-  error: typeof trpcClient.smtpConfiguration.getConfiguration.useQuery extends (
-    ...args: any[]
-  ) => infer R
-    ? R extends { error: infer E }
-      ? E
-      : never
-    : never;
+  error: GetConfigurationError;
 }) => {
   const { notifyError } = useDashboardNotification();
   const router = useRouter();
