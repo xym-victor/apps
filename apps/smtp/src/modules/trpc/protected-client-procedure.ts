@@ -21,24 +21,49 @@ const attachAppToken = middleware(async ({ ctx, next }) => {
     });
   }
 
-  const authData = await saleorApp.apl.get(ctx.saleorApiUrl);
+  try {
+    const authData = await saleorApp.apl.get(ctx.saleorApiUrl);
 
-  if (!authData) {
-    logger.debug("authData not found, throwing 401");
+    if (!authData) {
+      logger.debug("authData not found, throwing 401");
 
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Missing auth data",
+      });
+    }
+
+    return next({
+      ctx: {
+        appToken: authData.token,
+        saleorApiUrl: authData.saleorApiUrl,
+        appId: authData.appId,
+      },
+    });
+  } catch (error) {
+    logger.error({ error }, "Failed to get auth data from APL");
+
+    // If it's a Redis connection error, provide more context
+    if (error instanceof Error && error.message.includes("Redis")) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to connect to Redis APL",
+        cause: error,
+      });
+    }
+
+    // Re-throw TRPCError as-is
+    if (error instanceof TRPCError) {
+      throw error;
+    }
+
+    // Wrap other errors
     throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "Missing auth data",
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Failed to retrieve authentication data",
+      cause: error,
     });
   }
-
-  return next({
-    ctx: {
-      appToken: authData.token,
-      saleorApiUrl: authData.saleorApiUrl,
-      appId: authData.appId,
-    },
-  });
 });
 
 const validateClientToken = middleware(async ({ ctx, next, meta }) => {

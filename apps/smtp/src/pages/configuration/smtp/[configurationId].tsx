@@ -13,6 +13,7 @@ import { SmtpDangerousSection } from "../../../modules/smtp/ui/smtp-dangerous-se
 import { SmtpEventsSection } from "../../../modules/smtp/ui/smtp-events-section";
 import { SmtpSection } from "../../../modules/smtp/ui/smtp-section";
 import { SmtpSenderSection } from "../../../modules/smtp/ui/smtp-sender-section";
+import { SmtpConfiguration } from "../../../modules/smtp/configuration/smtp-config-schema";
 import { trpcClient } from "../../../modules/trpc/trpc-client";
 
 const LoadingView = () => {
@@ -49,7 +50,6 @@ const NotFoundView = () => {
 
 const EditSmtpConfigurationPage: NextPage = () => {
   const { appBridgeState } = useAppBridge();
-  const { notifyError } = useDashboardNotification();
   const router = useRouter();
   const [isAppBridgeReady, setIsAppBridgeReady] = useState(false);
   const configurationId = router.query.configurationId
@@ -63,26 +63,12 @@ const EditSmtpConfigurationPage: NextPage = () => {
     }
   }, [appBridgeState?.ready]);
 
-  const { data: configuration, isLoading } = trpcClient.smtpConfiguration.getConfiguration.useQuery(
+  const { data: configuration, isLoading, error } = trpcClient.smtpConfiguration.getConfiguration.useQuery(
     {
       id: configurationId!,
     },
     {
       enabled: !!configurationId && isAppBridgeReady,
-      onSettled(data, error) {
-        // 只有在 AppBridge 准备好后才显示通知
-        if (!isAppBridgeReady) {
-          return;
-        }
-
-        if (error) {
-          notifyError("Could not fetch configuration data");
-        }
-        if (error?.data?.code === "NOT_FOUND" || !data) {
-          notifyError("The requested configuration does not exist.");
-          router.replace(appUrls.configuration());
-        }
-      },
     },
   );
 
@@ -100,6 +86,42 @@ const EditSmtpConfigurationPage: NextPage = () => {
   }
 
   return (
+    <EditSmtpConfigurationContent
+      configuration={configuration}
+      error={error}
+    />
+  );
+};
+
+// 分离内容组件，确保 AppBridge 准备好后才调用相关 hooks
+const EditSmtpConfigurationContent = ({
+  configuration,
+  error: queryError,
+}: {
+  configuration: SmtpConfiguration;
+  error: typeof trpcClient.smtpConfiguration.getConfiguration.useQuery extends (
+    ...args: any[]
+  ) => infer R
+    ? R extends { error: infer E }
+      ? E
+      : never
+    : never;
+}) => {
+  const { notifyError } = useDashboardNotification();
+  const router = useRouter();
+
+  // 处理错误通知
+  useEffect(() => {
+    if (queryError) {
+      notifyError("Could not fetch configuration data");
+      if (queryError.data?.code === "NOT_FOUND") {
+        notifyError("The requested configuration does not exist.");
+        router.replace(appUrls.configuration());
+      }
+    }
+  }, [queryError, notifyError, router]);
+
+  return (
     <BasicLayout
       breadcrumbs={[
         { name: "Configuration", href: appUrls.configuration() },
@@ -111,17 +133,12 @@ const EditSmtpConfigurationPage: NextPage = () => {
           <Text>Connect SMTP with Saleor.</Text>
         </Box>
       </Box>
-      {/* 只有在 AppBridge 准备好后才渲染子组件，避免 useAppBridge 错误 */}
-      {isAppBridgeReady && (
-        <>
-          <SmtpBasicInformationSection configuration={configuration} />
-          <SmtpSection configuration={configuration} />
-          <SmtpSenderSection configuration={configuration} />
-          <SmtpEventsSection configuration={configuration} />
-          <SmtpChannelsSection configuration={configuration} />
-          <SmtpDangerousSection configuration={configuration} />
-        </>
-      )}
+      <SmtpBasicInformationSection configuration={configuration} />
+      <SmtpSection configuration={configuration} />
+      <SmtpSenderSection configuration={configuration} />
+      <SmtpEventsSection configuration={configuration} />
+      <SmtpChannelsSection configuration={configuration} />
+      <SmtpDangerousSection configuration={configuration} />
     </BasicLayout>
   );
 };

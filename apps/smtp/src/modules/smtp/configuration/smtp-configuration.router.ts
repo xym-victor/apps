@@ -94,12 +94,17 @@ export const smtpConfigurationRouter = router({
     .query(async ({ ctx, input }) => {
       const logger = createLogger("smtpConfigurationRouter", { saleorApiUrl: ctx.saleorApiUrl });
 
-      logger.debug(input, "smtpConfigurationRouter.get called");
+      logger.debug(input, "smtpConfigurationRouter.getConfiguration called");
 
-      return ctx.smtpConfigurationService.getConfiguration(input).match(
-        (v) => v,
-        (e) => throwTrpcErrorFromConfigurationServiceError(e),
-      );
+      try {
+        return await ctx.smtpConfigurationService.getConfiguration(input).match(
+          (v) => v,
+          (e) => throwTrpcErrorFromConfigurationServiceError(e),
+        );
+      } catch (error) {
+        logger.error({ error, input }, "Unexpected error in getConfiguration");
+        throw error;
+      }
     }),
   getConfigurations: protectedWithConfigurationServices
     .input(smtpGetConfigurationsInputSchema)
