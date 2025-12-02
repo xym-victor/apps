@@ -102,7 +102,8 @@ export const smtpConfigurationRouter = router({
           (e) => throwTrpcErrorFromConfigurationServiceError(e),
         );
       } catch (error) {
-        logger.error({ error, input }, "Unexpected error in getConfiguration");
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error({ errorMessage, configurationId: input.id }, "Unexpected error in getConfiguration");
         throw error;
       }
     }),

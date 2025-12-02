@@ -41,7 +41,8 @@ const attachAppToken = middleware(async ({ ctx, next }) => {
       },
     });
   } catch (error) {
-    logger.error({ error }, "Failed to get auth data from APL");
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error({ errorMessage }, "Failed to get auth data from APL");
 
     // If it's a Redis connection error, provide more context
     if (error instanceof Error && error.message.includes("Redis")) {
