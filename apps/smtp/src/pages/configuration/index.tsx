@@ -1,6 +1,7 @@
 import { useAppBridge } from "@saleor/app-sdk/app-bridge";
 import { Box, Text } from "@saleor/macaw-ui";
 import { NextPage } from "next";
+import { useEffect, useState } from "react";
 
 import { BasicLayout } from "../../components/basic-layout";
 import { SectionWithDescription } from "../../components/section-with-description";
@@ -13,9 +14,22 @@ import { trpcClient } from "../../modules/trpc/trpc-client";
 
 const ConfigurationPage: NextPage = () => {
   const { appBridgeState } = useAppBridge();
+  const [isAppBridgeReady, setIsAppBridgeReady] = useState(false);
+
+  // Wait for AppBridge to be ready before making queries
+  useEffect(() => {
+    if (appBridgeState?.ready) {
+      setIsAppBridgeReady(true);
+    }
+  }, [appBridgeState?.ready]);
 
   const { data: dataSmtp, isLoading: isLoadingSmtp } =
-    trpcClient.smtpConfiguration.getConfigurations.useQuery();
+    trpcClient.smtpConfiguration.getConfigurations.useQuery(
+      {},
+      {
+        enabled: isAppBridgeReady,
+      },
+    );
 
   const data: ConfigurationListItem[] = [
     ...(dataSmtp?.map((configuration) => ({
@@ -28,7 +42,7 @@ const ConfigurationPage: NextPage = () => {
 
   const isLoading = isLoadingSmtp;
 
-  if (!appBridgeState) {
+  if (!appBridgeState || !isAppBridgeReady) {
     return null;
   }
 
