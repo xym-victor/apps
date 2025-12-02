@@ -10,7 +10,7 @@
         "REDIS_PORT",
         "REDIS_PASSWORD",
         "REDIS_DB",
-        "REDIS_KEY_PREFIX"
+        "REDIS_HASH_COLLECTION_KEY"
       ]
     },
     "deploy": {
@@ -34,7 +34,7 @@
         "REDIS_PORT",
         "REDIS_PASSWORD",
         "REDIS_DB",
-        "REDIS_KEY_PREFIX"
+        "REDIS_HASH_COLLECTION_KEY"
       ]
     }
   }

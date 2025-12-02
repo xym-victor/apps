@@ -45,7 +45,7 @@ REDIS_DB=0                     # 可选，默认为 0
 | `REDIS_PORT` | Redis 端口 | `6379` | `6379` |
 | `REDIS_PASSWORD` | Redis 密码 | - | `your_password` |
 | `REDIS_DB` | Redis 数据库编号 | `0` | `0` |
-| `REDIS_KEY_PREFIX` | Redis key 前缀 | `saleor-apl:` | `saleor-apl:` |
+| `REDIS_HASH_COLLECTION_KEY` | Redis Hash 集合键名 | `saleor_app_auth` | `saleor_app_auth` |
 
 ## 根据你的配置
 

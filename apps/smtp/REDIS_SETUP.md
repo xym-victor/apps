@@ -55,7 +55,7 @@ REDIS_DB=0                    # 可选，默认为 0
 | `REDIS_PORT` | Redis 端口 | 否 | `6379` |
 | `REDIS_PASSWORD` | Redis 密码 | 否 | - |
 | `REDIS_DB` | Redis 数据库编号 | 否 | `0` |
-| `REDIS_KEY_PREFIX` | Redis key 前缀 | 否 | `saleor-apl:` |
+| `REDIS_HASH_COLLECTION_KEY` | Redis Hash 集合键名 | 否 | `saleor_app_auth` |
 
 \* 必须设置 `REDIS_URL` 或 `REDIS_HOST` 其中之一
 
@@ -83,7 +83,7 @@ REDIS_HOST=redis.example.com
 REDIS_PORT=6379
 REDIS_PASSWORD=your_secure_password
 REDIS_DB=0
-REDIS_KEY_PREFIX=saleor-apl:
+REDIS_HASH_COLLECTION_KEY=saleor_app_auth
 ```
 
 ## 启动 Redis 服务器
@@ -199,6 +199,6 @@ pnpm dev
 
 ## 代码位置
 
-- Redis APL 实现: `src/modules/apl/redis-apl.ts`
 - APL 配置: `src/saleor-app.ts`
+- 使用 `@saleor/app-sdk/APL/redis` 中的官方 RedisAPL 实现
 

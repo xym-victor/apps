@@ -1,11 +1,12 @@
 import { APL } from "@saleor/app-sdk/APL";
 import { DynamoAPL } from "@saleor/app-sdk/APL/dynamodb";
 import { FileAPL } from "@saleor/app-sdk/APL/file";
+import { RedisAPL } from "@saleor/app-sdk/APL/redis";
 import { SaleorCloudAPL } from "@saleor/app-sdk/APL/saleor-cloud";
 import { UpstashAPL } from "@saleor/app-sdk/APL/upstash";
 import { SaleorApp } from "@saleor/app-sdk/saleor-app";
+import { createClient } from "redis";
 
-import { RedisAPL } from "./modules/apl/redis-apl";
 import { dynamoMainTable } from "./modules/dynamodb/dynamo-main-table";
 
 const aplType = process.env.APL ?? "file";
@@ -38,6 +39,29 @@ const validateRedisEnvVariables = () => {
   }
 };
 
+const createRedisClient = () => {
+  const redisUrl = process.env.REDIS_URL;
+  const redisHost = process.env.REDIS_HOST || "localhost";
+  const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
+  const redisPassword = process.env.REDIS_PASSWORD;
+  const redisDb = parseInt(process.env.REDIS_DB || "0", 10);
+
+  if (redisUrl) {
+    return createClient({
+      url: redisUrl,
+    });
+  }
+
+  return createClient({
+    socket: {
+      host: redisHost,
+      port: redisPort,
+    },
+    password: redisPassword,
+    database: redisDb,
+  });
+};
+
 switch (aplType) {
   case "dynamodb": {
     validateDynamoEnvVariables();
@@ -57,7 +81,13 @@ switch (aplType) {
   case "redis": {
     validateRedisEnvVariables();
 
-    apl = new RedisAPL();
+    const redisClient = createRedisClient();
+    const hashCollectionKey = process.env.REDIS_HASH_COLLECTION_KEY || "saleor_app_auth";
+
+    apl = new RedisAPL({
+      client: redisClient,
+      hashCollectionKey,
+    });
 
     break;
   }

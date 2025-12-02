@@ -23,7 +23,7 @@ REDIS_PASSWORD=dxA28kdezT
 可选变量（有默认值）：
 -------------------------------------------
 REDIS_DB=0
-REDIS_KEY_PREFIX=saleor-apl:
+REDIS_HASH_COLLECTION_KEY=saleor_app_auth
 
 ===========================================
 部署步骤：
