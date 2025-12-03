@@ -2,7 +2,31 @@ import { actions, useAppBridge } from "@saleor/app-sdk/app-bridge";
 import { useCallback } from "react";
 
 export const useDashboardNotification = () => {
-  const { appBridge, appBridgeState } = useAppBridge();
+  // eslint-disable-next-line no-console
+  console.log("[SMTP][useDashboardNotification] hook called - attempting to get AppBridge");
+
+  let appBridge;
+  let appBridgeState;
+
+  try {
+    const result = useAppBridge();
+    appBridge = result.appBridge;
+    appBridgeState = result.appBridgeState;
+    // eslint-disable-next-line no-console
+    console.log("[SMTP][useDashboardNotification] useAppBridge succeeded", {
+      hasAppBridge: Boolean(appBridge),
+      appBridgeReady: appBridgeState?.ready,
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("[SMTP][useDashboardNotification] useAppBridge FAILED", {
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
+    // Set safe defaults - this should not happen if component is properly wrapped
+    appBridge = undefined;
+    appBridgeState = null;
+  }
 
   // Create notification functions that safely check before dispatching
   const safeDispatch = useCallback(

@@ -78,6 +78,21 @@ const EditSmtpConfigurationPage: NextPage = () => {
     },
   );
 
+  // 添加 tRPC 查询状态日志
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log("[SMTP][EditSmtpConfigurationPage] tRPC query state", {
+      configurationId,
+      isLoading,
+      hasData: Boolean(configuration),
+      hasError: Boolean(error),
+      errorMessage: error ? (error as unknown as Error)?.message : undefined,
+      errorCode: error?.data?.code,
+      isAppBridgeReady,
+      queryEnabled: !!configurationId && isAppBridgeReady,
+    });
+  }, [configurationId, isLoading, configuration, error, isAppBridgeReady]);
+
   // 只有在 AppBridge 完全准备好后才渲染内容
   if (!isAppBridgeReady) {
     // eslint-disable-next-line no-console
@@ -129,6 +144,13 @@ const EditSmtpConfigurationContent = ({
   configuration: SmtpConfiguration;
   error: GetConfigurationError;
 }) => {
+  // eslint-disable-next-line no-console
+  console.log("[SMTP][EditSmtpConfigurationContent] component rendering", {
+    configurationId: configuration.id,
+    configurationName: configuration.name,
+    hasQueryError: Boolean(queryError),
+  });
+
   const { notifyError } = useDashboardNotification();
   const router = useRouter();
 
