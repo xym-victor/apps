@@ -1,32 +1,47 @@
-import { actions, useAppBridge } from "@saleor/app-sdk/app-bridge";
-import { useCallback } from "react";
+import { actions, AppContext } from "@saleor/app-sdk/app-bridge";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 export const useDashboardNotification = () => {
   // eslint-disable-next-line no-console
   console.log("[SMTP][useDashboardNotification] hook called - attempting to get AppBridge");
 
-  let appBridge;
-  let appBridgeState;
+  // Directly access AppContext to avoid useAppBridge's mounted check
+  // This is safer in React 18 concurrent rendering scenarios
+  const { appBridge, mounted } = useContext(AppContext);
+  const [appBridgeState, setAppBridgeState] = useState(() =>
+    appBridge ? appBridge.getState() : null,
+  );
 
-  try {
-    const result = useAppBridge();
-    appBridge = result.appBridge;
-    appBridgeState = result.appBridgeState;
-    // eslint-disable-next-line no-console
-    console.log("[SMTP][useDashboardNotification] useAppBridge succeeded", {
-      hasAppBridge: Boolean(appBridge),
-      appBridgeReady: appBridgeState?.ready,
-    });
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("[SMTP][useDashboardNotification] useAppBridge FAILED", {
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined,
-    });
-    // Set safe defaults - this should not happen if component is properly wrapped
-    appBridge = undefined;
-    appBridgeState = null;
-  }
+  // eslint-disable-next-line no-console
+  console.log("[SMTP][useDashboardNotification] AppContext accessed", {
+    hasAppBridge: Boolean(appBridge),
+    mounted,
+    appBridgeReady: appBridgeState?.ready,
+  });
+
+  // Update state when AppBridge state changes (similar to useAppBridge)
+  useEffect(() => {
+    if (!appBridge) {
+      return;
+    }
+
+    const updateState = () => {
+      if (appBridge.getState()) {
+        setAppBridgeState(appBridge.getState());
+      }
+    };
+
+    const unsubscribes = [
+      appBridge.subscribe("handshake", updateState),
+      appBridge.subscribe("theme", updateState),
+      appBridge.subscribe("response", updateState),
+      appBridge.subscribe("redirect", updateState),
+    ];
+
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [appBridge]);
 
   // Create notification functions that safely check before dispatching
   const safeDispatch = useCallback(
