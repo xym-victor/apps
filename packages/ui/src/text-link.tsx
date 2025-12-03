@@ -18,7 +18,21 @@ const BaseTextLink = (props: TextLinkProps) => {
 };
 
 export const TextLink = ({ href, newTab = false, children, ...props }: TextLinkProps) => {
-  const { appBridge } = useAppBridge();
+  let appBridge: ReturnType<typeof useAppBridge>["appBridge"] | undefined;
+
+  try {
+    const result = useAppBridge();
+    appBridge = result.appBridge;
+  } catch (error) {
+    // When used outside of AppBridgeProvider (e.g. Next.js error boundary),
+    // we gracefully degrade to a normal link without AppBridge integration.
+    // eslint-disable-next-line no-console
+    console.warn("[TextLink] useAppBridge failed, falling back to plain link behavior", {
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    appBridge = undefined;
+  }
+
   const { push } = useRouter();
 
   const onNewTabClick = (event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
