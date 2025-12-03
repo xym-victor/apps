@@ -98,9 +98,9 @@ export const smtpConfigurationRouter = router({
 
       try {
         return await ctx.smtpConfigurationService.getConfiguration(input).match(
-          (v) => v,
-          (e) => throwTrpcErrorFromConfigurationServiceError(e),
-        );
+        (v) => v,
+        (e) => throwTrpcErrorFromConfigurationServiceError(e),
+      );
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
 

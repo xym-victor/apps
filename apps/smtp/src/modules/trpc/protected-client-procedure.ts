@@ -22,24 +22,24 @@ const attachAppToken = middleware(async ({ ctx, next }) => {
   }
 
   try {
-    const authData = await saleorApp.apl.get(ctx.saleorApiUrl);
+  const authData = await saleorApp.apl.get(ctx.saleorApiUrl);
 
-    if (!authData) {
-      logger.debug("authData not found, throwing 401");
+  if (!authData) {
+    logger.debug("authData not found, throwing 401");
 
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Missing auth data",
-      });
-    }
-
-    return next({
-      ctx: {
-        appToken: authData.token,
-        saleorApiUrl: authData.saleorApiUrl,
-        appId: authData.appId,
-      },
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Missing auth data",
     });
+  }
+
+  return next({
+    ctx: {
+      appToken: authData.token,
+      saleorApiUrl: authData.saleorApiUrl,
+      appId: authData.appId,
+    },
+  });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 

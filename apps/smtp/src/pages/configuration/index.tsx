@@ -18,6 +18,13 @@ const ConfigurationPage: NextPage = () => {
 
   // Wait for AppBridge to be ready before making queries
   useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log("[SMTP][ConfigurationPage] appBridgeState change", {
+      ready: appBridgeState?.ready,
+      hasUser: Boolean(appBridgeState?.user),
+      permissions: appBridgeState?.user?.permissions,
+    });
+
     if (appBridgeState?.ready) {
       setIsAppBridgeReady(true);
     }
@@ -43,10 +50,21 @@ const ConfigurationPage: NextPage = () => {
   const isLoading = isLoadingSmtp;
 
   if (!appBridgeState || !isAppBridgeReady) {
+    // eslint-disable-next-line no-console
+    console.log("[SMTP][ConfigurationPage] appBridge not ready yet", {
+      hasAppBridgeState: Boolean(appBridgeState),
+      isAppBridgeReady,
+    });
+
     return null;
   }
 
   if (appBridgeState.user?.permissions.includes("MANAGE_APPS") === false) {
+    // eslint-disable-next-line no-console
+    console.warn("[SMTP][ConfigurationPage] user lacks MANAGE_APPS permission", {
+      permissions: appBridgeState.user?.permissions,
+    });
+
     return <Text>You do not have permission to access this page.</Text>;
   }
 
