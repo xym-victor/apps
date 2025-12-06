@@ -58,9 +58,11 @@ const getRedisTlsCaCert = async (): Promise<string | undefined> => {
 
   // Prefer direct certificate content (better for serverless)
   if (redisTlsCaCert) {
-    // Check if it's Base64 encoded by trying to decode it
-    // Base64 encoded strings don't contain newlines and are longer
-    // Certificate content starts with "-----BEGIN"
+    /*
+     * Check if it's Base64 encoded by trying to decode it
+     * Base64 encoded strings don't contain newlines and are longer
+     * Certificate content starts with "-----BEGIN"
+     */
     const isLikelyBase64 =
       !redisTlsCaCert.includes("-----BEGIN") &&
       !redisTlsCaCert.includes("\n") &&
@@ -75,9 +77,11 @@ const getRedisTlsCaCert = async (): Promise<string | undefined> => {
         if (decoded.includes("-----BEGIN") && decoded.includes("-----END")) {
           return decoded;
         }
-      } catch (error) {
-        // If decoding fails, treat as direct certificate content
-        // This allows fallback to non-Base64 content
+      } catch {
+        /*
+         * If decoding fails, treat as direct certificate content
+         * This allows fallback to non-Base64 content
+         */
       }
     }
 
