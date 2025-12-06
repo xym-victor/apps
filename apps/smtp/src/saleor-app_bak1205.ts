@@ -51,70 +51,28 @@ const createRedisAPL = async (): Promise<APL> => {
   // Dynamic import to avoid loading Redis module on client side
   const { RedisAPL } = await import("@saleor/app-sdk/APL/redis");
   const { createClient } = await import("redis");
-  const { readFileSync } = await import("fs");
 
   const redisUrl = process.env.REDIS_URL;
   const redisHost = process.env.REDIS_HOST || "localhost";
   const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
   const redisPassword = process.env.REDIS_PASSWORD;
   const redisDb = parseInt(process.env.REDIS_DB || "0", 10);
-  const redisTlsCaCertPath = process.env.REDIS_TLS_CA_CERT_PATH;
 
   let redisClient;
 
   if (redisUrl) {
-    const clientConfig: Parameters<typeof createClient>[0] = {
+    redisClient = createClient({
       url: redisUrl,
-    };
-
-    // If CA certificate path is provided, add TLS configuration
-    if (redisTlsCaCertPath) {
-      try {
-        const caCert = readFileSync(redisTlsCaCertPath, "utf-8");
-
-        clientConfig.socket = {
-          ...clientConfig.socket,
-          tls: true,
-          ca: caCert,
-          rejectUnauthorized: true, // Verify certificate
-        };
-      } catch (error) {
-        throw new Error(
-          `Failed to read Redis TLS CA certificate from ${redisTlsCaCertPath}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-
-    redisClient = createClient(clientConfig);
+    });
   } else {
-    const clientConfig: Parameters<typeof createClient>[0] = {
+    redisClient = createClient({
       socket: {
         host: redisHost,
         port: redisPort,
       },
       password: redisPassword,
       database: redisDb,
-    };
-
-    // If CA certificate path is provided, add TLS configuration
-    if (redisTlsCaCertPath) {
-      try {
-        const caCert = readFileSync(redisTlsCaCertPath, "utf-8");
-
-        clientConfig.socket = {
-          ...clientConfig.socket,
-          tls: true,
-          ca: caCert,
-          rejectUnauthorized: true, // Verify certificate
-        };
-      } catch (error) {
-        throw new Error(
-          `Failed to read Redis TLS CA certificate from ${redisTlsCaCertPath}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-
-    redisClient = createClient(clientConfig);
+    });
   }
 
   const hashCollectionKey = process.env.REDIS_HASH_COLLECTION_KEY || "saleor_app_auth";

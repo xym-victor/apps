@@ -33,6 +33,20 @@ APL=redis
 REDIS_URL=redis://:yourpassword@localhost:6379
 ```
 
+如果 Redis 使用 TLS + ACL（推荐生产环境）：
+
+```env
+APL=redis
+REDIS_URL=rediss://username:password@your_redis_host:6379
+REDIS_TLS_CA_CERT_PATH=./ca.crt
+```
+
+**注意：**
+- 使用 `rediss://`（双 s）表示 TLS 加密连接
+- `username` 是 ACL 用户名，`password` 是密码
+- `REDIS_TLS_CA_CERT_PATH` 指向 CA 证书文件路径（相对于项目根目录或绝对路径）
+- 证书文件应放在 `apps/smtp/ca.crt`，或使用绝对路径如 `/etc/redis/tls/ca.crt`
+
 ### 方式 2: 使用单独的配置项
 
 在 `.env` 文件中设置：
@@ -56,6 +70,7 @@ REDIS_DB=0                    # 可选，默认为 0
 | `REDIS_PASSWORD` | Redis 密码 | 否 | - |
 | `REDIS_DB` | Redis 数据库编号 | 否 | `0` |
 | `REDIS_HASH_COLLECTION_KEY` | Redis Hash 集合键名 | 否 | `saleor_app_auth` |
+| `REDIS_TLS_CA_CERT_PATH` | Redis TLS CA 证书文件路径（TLS 连接时必需） | 否 | - |
 
 \* 必须设置 `REDIS_URL` 或 `REDIS_HOST` 其中之一
 
@@ -74,6 +89,20 @@ REDIS_URL=redis://localhost:6379
 APL=redis
 REDIS_URL=redis://:your_secure_password@redis.example.com:6379
 ```
+
+### 生产环境（TLS + ACL，推荐）
+
+```env
+APL=redis
+REDIS_URL=rediss://username:password@redis.example.com:6379
+REDIS_TLS_CA_CERT_PATH=./ca.crt
+```
+
+**说明：**
+- `rediss://`（双 s）表示 TLS 加密连接
+- `username` 是 ACL 用户名
+- `password` 是 ACL 密码
+- `REDIS_TLS_CA_CERT_PATH` 指向 CA 证书文件（可以是相对路径或绝对路径）
 
 ### 使用单独的配置项
 
