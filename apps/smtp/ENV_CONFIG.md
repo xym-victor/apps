@@ -49,7 +49,8 @@ REDIS_DB=0                     # 可选，默认为 0
 | `REDIS_PASSWORD` | Redis 密码 | - | `your_password` |
 | `REDIS_DB` | Redis 数据库编号 | `0` | `0` |
 | `REDIS_HASH_COLLECTION_KEY` | Redis Hash 集合键名 | `saleor_app_auth` | `saleor_app_auth` |
-| `REDIS_TLS_CA_CERT_PATH` | Redis TLS CA 证书文件路径（TLS 连接时必需） | - | `./ca.crt` 或 `/etc/redis/tls/ca.crt` |
+| `REDIS_TLS_CA_CERT_PATH` | Redis TLS CA 证书文件路径（TLS 连接时，本地开发推荐） | - | `./ca.crt` 或 `/etc/redis/tls/ca.crt` |
+| `REDIS_TLS_CA_CERT` | Redis TLS CA 证书内容（TLS 连接时，Serverless 环境推荐） | - | `-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----` |
 
 ## 根据你的配置
 
@@ -62,17 +63,28 @@ REDIS_URL=redis://:dxA28kdezT@43.153.98.182:6379
 ```
 
 **TLS + ACL 连接（推荐生产环境）：**
+
+**方式 1：使用证书文件路径（本地开发）**
 ```bash
 APL=redis
 REDIS_URL=rediss://victor:dxA28kdezT@43.153.98.182:6379
 REDIS_TLS_CA_CERT_PATH=./ca.crt
 ```
 
+**方式 2：使用证书内容（Serverless 环境推荐，如 Vercel）**
+```bash
+APL=redis
+REDIS_URL=rediss://victor:dxA28kdezT@43.153.98.182:6379
+REDIS_TLS_CA_CERT="-----BEGIN CERTIFICATE-----
+MIIF...（完整的证书内容）
+-----END CERTIFICATE-----"
+```
+
 **注意：**
 - 使用 `rediss://`（双 s）表示 TLS 加密连接
 - `victor` 是 ACL 用户名，`dxA28kdezT` 是密码
-- `REDIS_TLS_CA_CERT_PATH` 指向 CA 证书文件路径（相对于项目根目录或绝对路径）
-- 证书文件应放在 `apps/smtp/ca.crt`，或使用绝对路径如 `/etc/redis/tls/ca.crt`
+- **对于 Vercel 等 Serverless 环境，推荐使用 `REDIS_TLS_CA_CERT`（证书内容）而不是 `REDIS_TLS_CA_CERT_PATH`（文件路径）**
+- 如果使用 `REDIS_TLS_CA_CERT_PATH`，证书文件应放在 `apps/smtp/ca.crt`，或使用绝对路径如 `/etc/redis/tls/ca.crt`
 
 ## 部署平台配置指南
 

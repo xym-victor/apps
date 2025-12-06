@@ -44,6 +44,92 @@ const validateRedisEnvVariables = () => {
  */
 let redisAPLInstance: APL | undefined;
 
+/**
+ * Helper function to get Redis TLS CA certificate
+ * Supports:
+ * 1. Base64 encoded certificate content (REDIS_TLS_CA_CERT) - automatically detected and decoded
+ * 2. Direct certificate content (REDIS_TLS_CA_CERT) - if not Base64, used as-is
+ * 3. Certificate file path (REDIS_TLS_CA_CERT_PATH)
+ * For serverless environments, using Base64 encoded REDIS_TLS_CA_CERT is recommended
+ */
+const getRedisTlsCaCert = async (): Promise<string | undefined> => {
+  const redisTlsCaCert = process.env.REDIS_TLS_CA_CERT; // Certificate content (Base64 encoded or direct)
+  const redisTlsCaCertPath = process.env.REDIS_TLS_CA_CERT_PATH;
+
+  // Prefer direct certificate content (better for serverless)
+  if (redisTlsCaCert) {
+    // Check if it's Base64 encoded by trying to decode it
+    // Base64 encoded strings don't contain newlines and are longer
+    // Certificate content starts with "-----BEGIN"
+    const isLikelyBase64 =
+      !redisTlsCaCert.includes("-----BEGIN") &&
+      !redisTlsCaCert.includes("\n") &&
+      redisTlsCaCert.length > 100 &&
+      /^[A-Za-z0-9+/=]+$/.test(redisTlsCaCert.trim());
+
+    if (isLikelyBase64) {
+      try {
+        const decoded = Buffer.from(redisTlsCaCert.trim(), "base64").toString("utf-8");
+
+        // Verify it decoded to a valid certificate format
+        if (decoded.includes("-----BEGIN") && decoded.includes("-----END")) {
+          return decoded;
+        }
+      } catch (error) {
+        // If decoding fails, treat as direct certificate content
+        // This allows fallback to non-Base64 content
+      }
+    }
+
+    // If not Base64 or decoding failed, return as direct certificate content
+    return redisTlsCaCert;
+  }
+
+  if (redisTlsCaCertPath) {
+    try {
+      const { readFileSync } = await import("fs");
+      const { resolve } = await import("path");
+      const { existsSync } = await import("fs");
+
+      let certPath = redisTlsCaCertPath;
+
+      // If relative path, try to resolve it
+      if (!certPath.startsWith("/") && !certPath.startsWith("C:")) {
+        // Try relative to process.cwd()
+        const resolvedPath = resolve(process.cwd(), certPath);
+
+        if (existsSync(resolvedPath)) {
+          certPath = resolvedPath;
+        } else {
+          // Try relative to current file location
+          try {
+            const { fileURLToPath } = await import("url");
+            const { dirname } = await import("path");
+
+            const currentFile = fileURLToPath(import.meta.url);
+            const currentDir = dirname(currentFile);
+            const dirnameResolved = resolve(currentDir, "..", "..", certPath);
+
+            if (existsSync(dirnameResolved)) {
+              certPath = dirnameResolved;
+            }
+          } catch {
+            // Ignore __dirname resolution errors
+          }
+        }
+      }
+
+      return readFileSync(certPath, "utf-8");
+    } catch (error) {
+      throw new Error(
+        `Failed to read Redis TLS CA certificate from ${redisTlsCaCertPath}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  return undefined;
+};
+
 const createRedisAPL = async (): Promise<APL> => {
   if (redisAPLInstance) {
     return redisAPLInstance;
@@ -52,14 +138,15 @@ const createRedisAPL = async (): Promise<APL> => {
   // Dynamic import to avoid loading Redis module on client side
   const { RedisAPL } = await import("@saleor/app-sdk/APL/redis");
   const { createClient } = await import("redis");
-  const { readFileSync } = await import("fs");
 
   const redisUrl = process.env.REDIS_URL;
   const redisHost = process.env.REDIS_HOST || "localhost";
   const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
   const redisPassword = process.env.REDIS_PASSWORD;
   const redisDb = parseInt(process.env.REDIS_DB || "0", 10);
-  const redisTlsCaCertPath = process.env.REDIS_TLS_CA_CERT_PATH;
+
+  // Get TLS CA certificate (supports both direct content and file path)
+  const caCert = await getRedisTlsCaCert();
 
   let redisClient;
 
@@ -68,22 +155,14 @@ const createRedisAPL = async (): Promise<APL> => {
       url: redisUrl,
     };
 
-    // If CA certificate path is provided, add TLS configuration
-    if (redisTlsCaCertPath) {
-      try {
-        const caCert = readFileSync(redisTlsCaCertPath, "utf-8");
-
-        clientConfig.socket = {
-          ...clientConfig.socket,
-          tls: true,
-          ca: caCert,
-          rejectUnauthorized: true, // Verify certificate
-        };
-      } catch (error) {
-        throw new Error(
-          `Failed to read Redis TLS CA certificate from ${redisTlsCaCertPath}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
+    // If CA certificate is provided, add TLS configuration
+    if (caCert) {
+      clientConfig.socket = {
+        ...clientConfig.socket,
+        tls: true,
+        ca: caCert,
+        rejectUnauthorized: true, // Verify certificate
+      };
     }
 
     redisClient = createClient(clientConfig);
@@ -97,22 +176,14 @@ const createRedisAPL = async (): Promise<APL> => {
       database: redisDb,
     };
 
-    // If CA certificate path is provided, add TLS configuration
-    if (redisTlsCaCertPath) {
-      try {
-        const caCert = readFileSync(redisTlsCaCertPath, "utf-8");
-
-        clientConfig.socket = {
-          ...clientConfig.socket,
-          tls: true,
-          ca: caCert,
-          rejectUnauthorized: true, // Verify certificate
-        };
-      } catch (error) {
-        throw new Error(
-          `Failed to read Redis TLS CA certificate from ${redisTlsCaCertPath}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
+    // If CA certificate is provided, add TLS configuration
+    if (caCert) {
+      clientConfig.socket = {
+        ...clientConfig.socket,
+        tls: true,
+        ca: caCert,
+        rejectUnauthorized: true, // Verify certificate
+      };
     }
 
     redisClient = createClient(clientConfig);

@@ -11,7 +11,8 @@
         "REDIS_PASSWORD",
         "REDIS_DB",
         "REDIS_HASH_COLLECTION_KEY",
-        "REDIS_TLS_CA_CERT_PATH"
+        "REDIS_TLS_CA_CERT_PATH",
+        "REDIS_TLS_CA_CERT"
       ]
     },
     "deploy": {
@@ -36,7 +37,8 @@
         "REDIS_PASSWORD",
         "REDIS_DB",
         "REDIS_HASH_COLLECTION_KEY",
-        "REDIS_TLS_CA_CERT_PATH"
+        "REDIS_TLS_CA_CERT_PATH",
+        "REDIS_TLS_CA_CERT"
       ]
     }
   }
