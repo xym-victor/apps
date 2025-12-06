@@ -121,6 +121,7 @@ const createRedisAPL = async (): Promise<APL> => {
   // Add error event listeners for better debugging
   redisClient.on("error", (error) => {
     const logger = createLogger("RedisAPL");
+
     logger.error(
       {
         errorMessage: error instanceof Error ? error.message : String(error),
@@ -132,16 +133,19 @@ const createRedisAPL = async (): Promise<APL> => {
 
   redisClient.on("connect", () => {
     const logger = createLogger("RedisAPL");
+
     logger.info("Redis client connecting...");
   });
 
   redisClient.on("ready", () => {
     const logger = createLogger("RedisAPL");
+
     logger.info("Redis client ready");
   });
 
   redisClient.on("reconnecting", () => {
     const logger = createLogger("RedisAPL");
+
     logger.warn("Redis client reconnecting...");
   });
 
