@@ -115,10 +115,26 @@ export const smtpConfigurationRouter = router({
 
       logger.debug(input, "smtpConfigurationRouter.getConfigurations called");
 
-      return ctx.smtpConfigurationService.getConfigurations(input).match(
-        (v) => v,
-        (e) => throwTrpcErrorFromConfigurationServiceError(e),
-      );
+      try {
+        return await ctx.smtpConfigurationService.getConfigurations(input).match(
+          (v) => v,
+          (e) => throwTrpcErrorFromConfigurationServiceError(e),
+        );
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorName = error instanceof Error ? error.name : undefined;
+
+        logger.error(
+          {
+            errorMessage,
+            errorName,
+            input,
+            saleorApiUrl: ctx.saleorApiUrl,
+          },
+          "Unexpected error in getConfigurations",
+        );
+        throw error;
+      }
     }),
   createConfiguration: protectedWithConfigurationServices
     .input(smtpCreateConfigurationInputSchema)

@@ -42,14 +42,32 @@ const attachAppToken = middleware(async ({ ctx, next }) => {
   });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorName = error instanceof Error ? error.name : undefined;
+    const errorStack = error instanceof Error ? error.stack : undefined;
 
-    logger.error({ errorMessage }, "Failed to get auth data from APL");
+    logger.error(
+      {
+        errorMessage,
+        errorName,
+        errorStack,
+        saleorApiUrl: ctx.saleorApiUrl,
+      },
+      "Failed to get auth data from APL",
+    );
 
     // If it's a Redis connection error, provide more context
-    if (error instanceof Error && error.message.includes("Redis")) {
+    if (
+      error instanceof Error &&
+      (error.message.includes("Redis") ||
+        error.message.includes("ECONNREFUSED") ||
+        error.message.includes("ENOTFOUND") ||
+        error.message.includes("ETIMEDOUT") ||
+        error.message.includes("certificate") ||
+        error.message.includes("TLS"))
+    ) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to connect to Redis APL",
+        message: `Failed to connect to Redis APL: ${errorMessage}`,
         cause: error,
       });
     }
@@ -62,7 +80,7 @@ const attachAppToken = middleware(async ({ ctx, next }) => {
     // Wrap other errors
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "Failed to retrieve authentication data",
+      message: `Failed to retrieve authentication data: ${errorMessage}`,
       cause: error,
     });
   }

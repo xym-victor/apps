@@ -5,6 +5,7 @@ import { SaleorCloudAPL } from "@saleor/app-sdk/APL/saleor-cloud";
 import { UpstashAPL } from "@saleor/app-sdk/APL/upstash";
 import { SaleorApp } from "@saleor/app-sdk/saleor-app";
 
+import { createLogger } from "./logger";
 import { dynamoMainTable } from "./modules/dynamodb/dynamo-main-table";
 
 const aplType = process.env.APL ?? "file";
@@ -116,6 +117,33 @@ const createRedisAPL = async (): Promise<APL> => {
 
     redisClient = createClient(clientConfig);
   }
+
+  // Add error event listeners for better debugging
+  redisClient.on("error", (error) => {
+    const logger = createLogger("RedisAPL");
+    logger.error(
+      {
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.name : undefined,
+      },
+      "Redis client error",
+    );
+  });
+
+  redisClient.on("connect", () => {
+    const logger = createLogger("RedisAPL");
+    logger.info("Redis client connecting...");
+  });
+
+  redisClient.on("ready", () => {
+    const logger = createLogger("RedisAPL");
+    logger.info("Redis client ready");
+  });
+
+  redisClient.on("reconnecting", () => {
+    const logger = createLogger("RedisAPL");
+    logger.warn("Redis client reconnecting...");
+  });
 
   const hashCollectionKey = process.env.REDIS_HASH_COLLECTION_KEY || "saleor_app_auth";
 
